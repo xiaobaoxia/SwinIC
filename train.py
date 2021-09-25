@@ -232,9 +232,9 @@ def main():
     st_epoch = 0
     ###################
     logger_train = Logger(
-        os.path.join(result_saved_path, 'type'+str(args.model_type)+'_qp'+str(args.qp)+'_log_' + str(args.batchsize) + '_' + str(args.learning_rate) + '_' + str(lmbda) + '_' + str(args.patchsize) + "_"+str(channel)+'_'+str(args.windowsize)+'_'+str(args.date)+'.txt'))
+        os.path.join('result', 'type'+str(args.model_type)+'_qp'+str(args.qp)+'_log_' + str(args.batchsize) + '_' + str(args.learning_rate) + '_' + str(lmbda) + '_' + str(args.patchsize) + "_"+str(channel)+'_'+str(args.windowsize)+'_'+str(args.date)+'.txt'))
     logger_val = Logger(
-        os.path.join(result_saved_path,
+        os.path.join('result',
                      'type'+str(args.model_type)+'_qp'+str(args.qp)+'_log_val_' + str(args.batchsize) + '_' + str(args.learning_rate) + '_' + str(lmbda) + '_' + str(args.patchsize) + "_"+str(channel)+'_'+str(args.windowsize)+'_'+str(args.date)+ '.txt'))
     logger_train.set_names(
         ['Epoch', 'Train Loss', 'Train X_MSE','Train MS_SSIM', 'Train Bpp','Train Bpp_y','Train Bpp_z'])
