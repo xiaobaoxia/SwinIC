@@ -20,19 +20,21 @@ parser.add_argument(
 运行train进行训练 命令如下
 
 Command
-需要完成以下11组参数的训练
+需要完成以下11组参数的训练 
+batchsize和使用的gpu数量需要自行调整
+batchsize为4时约需要11G显存
 ```shell
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 1
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 2
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 3
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 4
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 5
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 6
-python train.py --batchsize 16 --gpu "0,1" --model_type 0 --qp 7
-python train.py --batchsize 16 --gpu "0,1" --model_type 1 --qp 1
-python train.py --batchsize 16 --gpu "0,1" --model_type 1 --qp 2
-python train.py --batchsize 16 --gpu "0,1" --model_type 1 --qp 3
-python train.py --batchsize 16 --gpu "0,1" --model_type 1 --qp 4
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 1
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 2
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 3
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 4
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 5
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 6
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 7
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 1
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 2
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 3
+python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 4
 ```
 
 model_type 0 损失为MSE 
