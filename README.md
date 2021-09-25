@@ -1,10 +1,13 @@
 # SwinIC
 Image Compression Using Swin Transformer
 需要安装的包在文件requirement.txt中
-训练集DIV2K 测试集Kodak 已在文件中
-首先使用utils将训练数据集预处理900张图上采样到(2000,2000) 随机裁剪384 需要配置数据集路径
+训练集DIV2K 解压到dataset/DIV2K中 http://data.vision.ee.ethz.ch/cvl/DIV2K/DIV2K_train_HR.zip
+测试集Kodak 已在dataset/kodak
 
-请在train.py 中修改数据集路径
+首先使用utils.py将训练数据集进行预处理
+900张图上采样到(2000,2000) 随机裁剪384 
+
+请在train.py 中配置真实数据集路径
 ```python
 parser.add_argument(
         "--train_path", default='dataset/DIV2K/DIV2K_train_HR_sub', type=str,
