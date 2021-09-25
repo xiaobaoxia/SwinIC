@@ -1,4 +1,5 @@
 from os import path as osp
+import os
 import random
 from multiprocessing import Pool
 
@@ -47,6 +48,8 @@ def extract_subimages():
     # HR images
     opt['input_folder'] = 'dataset/DIV2K/DIV2K_train_HR'
     opt['save_folder'] = 'dataset/DIV2K/DIV2K_train_HR_sub'
+    if not os.path.isdir(opt['save_folder']):
+        os.mkdir(opt['save_folder'])
     opt['crop_size'] = 384
     input_folder = opt['input_folder']
     save_folder = opt['save_folder']
