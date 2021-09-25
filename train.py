@@ -96,6 +96,7 @@ class Preprocess(object):
 def test(net,epoch,val_data,val_loader,val_transform,criterion):
     start_time = time.time()
     net.eval()
+    list_test_v_loss = 0.
     list_test_v_mse = 0.
     list_test_v_ms_ssim = 0.
     list_test_bpp_z = 0.
@@ -133,7 +134,8 @@ def test(net,epoch,val_data,val_loader,val_transform,criterion):
             v_psnr = torch.mean(20 * torch.log10(255 / torch.sqrt(v_mse)), 0)
             bpp_y = latent_rate
             bpp_z = hyperlatent_rate
-
+            
+	    list_test_v_loss += v_loss.item()
             list_test_v_mse += v_mse.item()
             list_test_v_psnr += v_psnr.item()
             list_test_v_ms_ssim += v_ms_ssim.item()
@@ -149,7 +151,7 @@ def test(net,epoch,val_data,val_loader,val_transform,criterion):
     batch_val_bpp_y = list_test_bpp_y / cnt
     batch_val_bpp_z = list_test_bpp_z / cnt
     batch_val_bpp_real = batch_val_bpp_y+batch_val_bpp_z
-    val_loss = lmbda * batch_val_mse + batch_val_bpp_real
+    val_loss = list_test_v_loss/cnt
     timestamp = time.time()
     print('[Epoch %04d TEST %.1f seconds] v_loss: %.4e v_mse: %.4e v_ms_ssim: %.4e v_psnr: %.4e bpp: %.4e bpp_y: %.4e bpp_z: %.4e' % (
         epoch,
