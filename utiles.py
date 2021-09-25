@@ -45,8 +45,8 @@ def extract_subimages():
     opt = {}
     opt['n_thread'] = 20
     # HR images
-    opt['input_folder'] = '/home/s2020020941/dataset/DIV2K/DIV2K_train_HR'
-    opt['save_folder'] = '/home/s2020020941/dataset/DIV2K/DIV2K_train_HR_sub'
+    opt['input_folder'] = 'dataset/DIV2K/DIV2K_train_HR'
+    opt['save_folder'] = 'dataset/DIV2K/DIV2K_train_HR_sub'
     opt['crop_size'] = 384
     input_folder = opt['input_folder']
     save_folder = opt['save_folder']
