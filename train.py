@@ -134,7 +134,6 @@ def test(net,epoch,val_data,val_loader,val_transform,criterion):
             v_psnr = torch.mean(20 * torch.log10(255 / torch.sqrt(v_mse)), 0)
             bpp_y = latent_rate
             bpp_z = hyperlatent_rate
-            
 	    list_test_v_loss += v_loss.item()
             list_test_v_mse += v_mse.item()
             list_test_v_psnr += v_psnr.item()
