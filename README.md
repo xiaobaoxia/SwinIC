@@ -43,5 +43,5 @@ python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 4
 ```
 
 model_type 0 损失为MSE 
-model_type 0 损失为MS-SSIM
+model_type 1 损失为MS-SSIM
 
