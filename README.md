@@ -10,7 +10,7 @@ http://data.vision.ee.ethz.ch/cvl/DIV2K/DIV2K_valid_HR.zip
 测试集Kodak 已在dataset/kodak
 
 首先使用utils.py将训练数据集进行预处理
-900张图上采样到(2000,2000) 随机裁剪384 
+900张图随机裁剪384 
 
 请在train.py 中配置真实数据集路径
 ```python
