@@ -2,7 +2,7 @@
 Image Compression Using Swin Transformer
 项目依赖在文件requirement.txt中
 
-训练集DIV2K train&val 解压到dataset/DIV2K/DIV2K_train_HR中。
+训练集DIV2K train(800)&val(100) 解压到dataset/DIV2K/DIV2K_train_HR中(train和val放到一起 共900张)。
 下载链接 
 http://data.vision.ee.ethz.ch/cvl/DIV2K/DIV2K_train_HR.zip 
 http://data.vision.ee.ethz.ch/cvl/DIV2K/DIV2K_valid_HR.zip
