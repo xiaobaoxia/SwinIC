@@ -2,6 +2,7 @@ from os import path as osp
 import os
 import random
 from multiprocessing import Pool
+from tqdm import tqdm
 
 def scandir(dir_path, suffix=None, recursive=False, full_path=False):
     """Scan a directory to find the interested files.
