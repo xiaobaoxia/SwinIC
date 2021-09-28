@@ -24,8 +24,8 @@ parser.add_argument(
 
 运行train进行训练 命令如下
 
-Command
 需要完成以下11组参数的训练 
+
 batchsize和使用的gpu数量需要自行调整
 
 batchsize为4时约需要11G显存
