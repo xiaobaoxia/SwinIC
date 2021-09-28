@@ -27,7 +27,9 @@ parser.add_argument(
 Command
 需要完成以下11组参数的训练 
 batchsize和使用的gpu数量需要自行调整
+
 batchsize为4时约需要11G显存
+
 高qp网络channel数为 低qp的两倍，会增加显存使用，需要根据情况调低batchsize
 ```shell
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 1
