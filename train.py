@@ -306,7 +306,7 @@ def main():
              batch_val_bpp_z])
         # 降低学习率
         sch.step(val_loss)
-        if val_loss_best is None or (val_loss > val_loss_best):
+        if val_loss_best is None or (val_loss < val_loss_best):
             val_loss_best = val_loss
             print('[INFO] Saving')
             if not os.path.isdir(args.checkpoint_dir):
