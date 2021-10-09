@@ -230,7 +230,7 @@ def main():
     # if args.load_weight:
     #     net.load_state_dict(torch.load("checkpoint/SwinIC_0qp1_384_8_0925.ckpt"))
     #     opt.load_state_dict(torch.load("checkpoint/SwinIC_opt_0qp1_384_8_0925.ckpt"))
-    sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=1,
+    sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=2,
                                                threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # for checkpoint resume
     st_epoch = 0
