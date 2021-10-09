@@ -360,15 +360,15 @@ if __name__ == "__main__":
         "--checkpoint_dir", default="checkpoint",
         help="Directory where to save/load model checkpoints.")
     parser.add_argument(
-        "--batchsize", type=int, default=12,
+        "--batchsize", type=int, default=16,
         help="Batch size for training.")
     parser.add_argument(
-        '--gpu', default='0,1,2', type=str, help='gpu id')
+        '--gpu', default='0,1,2,3', type=str, help='gpu id')
     parser.add_argument(
-        "--qp", type=int, default=2,
+        "--qp", type=int, default=0,
         help="quantization parameter")
     parser.add_argument(
-        "--num_workers", type=int, default=0,
+        "--num_workers", type=int, default=12,
         help="num workers for data loading.")
     parser.add_argument(
         "--learning_rate", type=int, default=0.0001,
