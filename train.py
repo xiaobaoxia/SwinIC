@@ -351,10 +351,10 @@ if __name__ == "__main__":
         "output", nargs="?",
         help="Output filename.")
     parser.add_argument(
-        "--train_path", default='../../../dataset/DIV2K/DIV2K_train_HR_sub', type=str,
+        "--train_path", default='dataset/DIV2K/DIV2K_train_HR_sub', type=str,
         help='train dataset path')
     parser.add_argument(
-        "--val_path", default='../../../dataset/kodak', type=str,
+        "--val_path", default='dataset/kodak', type=str,
         help='val dataset path')
     parser.add_argument(
         "--checkpoint_dir", default="checkpoint",
