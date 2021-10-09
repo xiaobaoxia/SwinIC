@@ -137,6 +137,7 @@ class analysisTransformModel(nn.Module):
                              mlp_ratio=2, qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
                              drop_path=0, norm_layer=nn.LayerNorm, downsample=None,
                              use_checkpoint=False, patch_size=1, resi_connection='3conv')
+        # self.Attention0 = NonLocalAttentionBlock(num_filters)
 
     def forward(self, x):
         shortcut0 = self.shortcut0(x)
@@ -328,7 +329,6 @@ class entropy_parameter(nn.Module):
             nn.LeakyReLU(),
             nn.Conv2d(640, 640 * 2, 1, 1),
             nn.LeakyReLU(),
-            # 从这里向上梯度变为NAN
             nn.Conv2d(640 * 2, num_filters * 30, 1, 1),
         )
         self.masked = MaskedConv2d("A", in_channels=num_filters, out_channels=num_filters*2, kernel_size=5, stride=1, padding=2)
@@ -406,19 +406,19 @@ class RateDistortionLoss(nn.Module):
         """
         half = 0.5
         const = (2 ** 0.5)
-        return half * (1 + torch.erf((x - mu) / ((const * sigma)+1e-10)))
+        return half * (1 + torch.erf((x - mu) / (const * sigma)))
 
     def cumulative_laplace(self, x,mu,sigma):
         """
         Calculates CDF of Laplace distribution with parameters mu and sigma at point x
         """
-        return 0.5 - 0.5 * (x - mu).sign() * torch.expm1(-(x - mu).abs() / (sigma+1e-10))
+        return 0.5 - 0.5 * (x - mu).sign() * torch.expm1(-(x - mu).abs() / (sigma))
 
     def cumulative_logistic(self, x,mu,sigma):
         """
         Calculates CDF of Logistic distribution with parameters mu and sigma at point x
         """
-        return torch.sigmoid((x - mu) / (sigma+1e-10))
+        return torch.sigmoid((x - mu) / (sigma))
 
     def simple_cumulative(self, x):
         """
@@ -447,6 +447,7 @@ class RateDistortionLoss(nn.Module):
         return 0.025
 
     def latent_rate(self,y_hat,mu, sigma, probs, probs_lap, probs_log, probs_mix,mode='train'):
+        sigma += 1e-10
         half = 0.5
         likelihoods_0 = self.cumulative_normal(y_hat + half, mu[...,0], sigma[...,0]) - self.cumulative_normal(y_hat - half,
                                                                                                           mu[...,0],
@@ -522,10 +523,14 @@ class RateDistortionLoss(nn.Module):
         upper = self.hyper_cumulative(z + .5)
         lower = self.hyper_cumulative(z - .5)
         likelihoods = torch.abs(upper - lower)
+
+        likelihood_lower_bound = 1e-8
+        likelihood_upper_bound = 1.0
+        likelihoods = torch.clamp(likelihoods, min=likelihood_lower_bound, max=likelihood_upper_bound)
+
         return -torch.sum(torch.log2(likelihoods), dim=(1, 2, 3))
 
     def forward(self, x, x_hat, y_hat, z_hat, means, variances, probs, probs_lap, probs_log, probs_mix, lam,num_pixels,model_type):
-
         mse = torch.mean((x - x_hat) ** 2, [0, 1, 2, 3])
         ms_ssim = 1-compute_ms_ssim(x, x_hat, data_range=255, size_average=True)
         latent_rate = self.latent_rate(y_hat,means, variances, probs, probs_lap, probs_log, probs_mix)
@@ -559,9 +564,8 @@ bypass_round = BypassRound.apply
 # Stage 4: End-to-end train the whole network w/o the helping (auxillary) loss
 
 class Net(nn.Module):
-    def __init__(self, lmbda,channel,windowsize):
+    def __init__(self, channel,windowsize):
         super(Net, self).__init__()
-        self.lmbda = lmbda
         self.a_model = analysisTransformModel(in_dim=3,num_filters=channel,windowsize=windowsize,depths=[6,6,6,6],num_heads=[8,8,8,8])
         self.s_model = synthesisTransformModel(num_filters=channel,windowsize=windowsize,depths=[6,6,6,6],num_heads=[8,8,8,8])
         self.ha_model = h_analysisTransformModel(in_dim=channel,num_filters=channel)
