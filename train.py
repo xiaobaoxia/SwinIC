@@ -1,5 +1,13 @@
 from SwinIC import *
 
+class Preprocess(object):
+    def __init__(self):
+        pass
+    def __call__(self, PIL_img):
+        img = torch.from_numpy(np.asarray(PIL_img, dtype=np.float32).transpose((2, 0, 1)))
+        img /= 127.5
+        img -= 1.0
+        return img
 
 # differentiable rounding function
 class BypassRound(Function):
@@ -83,14 +91,6 @@ def concat_images(image1, image2):
 	return result_image
 
 
-class Preprocess(object):
-    def __init__(self):
-        pass
-    def __call__(self, PIL_img):
-        img = torch.from_numpy(np.asarray(PIL_img, dtype=np.float32).transpose((2, 0, 1)))
-        img /= 127.5
-        img -= 1.0
-        return img
 
 @torch.no_grad()
 def test(net,epoch,val_data,val_loader,val_transform,criterion):
@@ -118,8 +118,8 @@ def test(net,epoch,val_data,val_loader,val_transform,criterion):
             x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix = net(images_pad, mode='eval')
             x_hat = x_hat[..., :h_old, :w_old]
 
-            images = torch.round(images * 255).float()
-            x_hat = torch.round(torch.clamp(x_hat * 255, 0, 255)).float()
+            images = torch.round((images + 1) * 127.5).float()
+            x_hat = torch.round(torch.clamp((x_hat + 1) * 127.5, 0, 255)).float()
             v_loss, v_mse, v_ms_ssim, latent_rate, hyperlatent_rate = criterion(images, x_hat, y_hat, z_hat, means, variances,
                                                                           probs, probs_lap, probs_log, probs_mix, lmbda,
                                                                           num_pixels, args.model_type)
@@ -135,7 +135,6 @@ def test(net,epoch,val_data,val_loader,val_transform,criterion):
             bpp_y = latent_rate
             bpp_z = hyperlatent_rate
             list_test_v_loss +=v_loss.item()
-            list_test_v_mse += v_mse.item()
             list_test_v_mse += v_mse.item()
             list_test_v_psnr += v_psnr.item()
             list_test_v_ms_ssim += v_ms_ssim.item()
@@ -196,10 +195,9 @@ class SelfDataset(torchvision.datasets.VisionDataset):
         return len(self.imgs)
 
 def main():
-    # todo:数据预处理，数据集下载
     num_pixels = (args.patchsize * args.patchsize)
     train_transform = transforms.Compose([
-        transforms.ToTensor(),
+        Preprocess(),
     ])
     train_data = SelfDataset(args.train_path,train_transform)
     train_sampler = torch.utils.data.RandomSampler(train_data)
@@ -211,7 +209,7 @@ def main():
     )
 
     val_transform = transforms.Compose([
-        transforms.ToTensor(),
+        Preprocess(),
     ])
     val_data = SelfDataset(args.val_path,val_transform)
     # val_sampler = torch.utils.data.RandomSampler(val_data)
@@ -222,12 +220,16 @@ def main():
         # batch_sampler=batch_val_sampler,
     )
 
-    net = Net(lmbda,channel,args.windowsize)
+    net = Net(channel,args.windowsize)
+
     # 单卡训练
     net = nn.DataParallel(net,output_device=0)
     net.cuda()
     criterion = RateDistortionLoss()
     opt = optim.AdamW(net.parameters(), lr=args.learning_rate,weight_decay=0.05)
+    # if args.load_weight:
+    #     net.load_state_dict(torch.load("checkpoint/SwinIC_0qp1_384_8_0925.ckpt"))
+    #     opt.load_state_dict(torch.load("checkpoint/SwinIC_opt_0qp1_384_8_0925.ckpt"))
     sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=1,
                                                threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # for checkpoint resume
@@ -255,15 +257,28 @@ def main():
         with tqdm(total=len(train_data), desc=f'Epoch train {epoch + 1}/{args.epoch}', unit='img',ncols=100) as pbar:
             for i, (images,fn) in enumerate(training_loader):
                 opt.zero_grad()
+
                 images = torch.stack([image.cuda() for image in images], dim=0)
                 x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix = net(images,'train')
-                images = torch.round(images * 255).float()
-                x_hat = bypass_round(torch.clamp(x_hat * 255, 0, 255)).float()
+                images = torch.round((images+1) * 127.5).float()
+                x_hat = bypass_round(torch.clamp((x_hat+1) * 127.5, 0, 255)).float()
                 loss,mse,ms_ssim,latent_rate,hyperlatent_rate = criterion(images,x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix,lmbda,num_pixels,args.model_type)
-
-                if np.isnan(loss.item()):
-                    raise Exception('NaN in loss')
                 loss.backward()
+                if loss != loss:
+                    # print grad check
+                    v_n = []
+                    v_v = []
+                    v_g = []
+                    for name, parameter in net.named_parameters():
+                        v_n.append(name)
+                        v_v.append(parameter.detach().cpu().numpy() if parameter is not None else [0])
+                        v_g.append(parameter.grad.detach().cpu().numpy() if parameter.grad is not None else [0])
+                    for i in range(len(v_n)):
+                        print('value %s: %.3e ~ %.3e' % (v_n[i], np.min(v_v[i]).item(), np.max(v_v[i]).item()))
+                        print('grad  %s: %.3e ~ %.3e' % (v_n[i], np.min(v_g[i]).item(), np.max(v_g[i]).item()))
+
+                    raise Exception('NaN in loss, crack!')
+
                 opt.step()
                 list_train_loss += loss.item()
                 list_train_mse += mse.item()
@@ -327,8 +342,7 @@ def make_dir(args):
         os.mkdir('test_images')
     if not os.path.isdir('train_images'):
         os.mkdir('train_images')
-    if not os.path.isdir('result'):
-        os.mkdir('result')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -337,30 +351,30 @@ if __name__ == "__main__":
         "output", nargs="?",
         help="Output filename.")
     parser.add_argument(
-        "--train_path", default='dataset/DIV2K/DIV2K_train_HR_sub', type=str,
+        "--train_path", default='../../../dataset/DIV2K/DIV2K_train_HR_sub', type=str,
         help='train dataset path')
     parser.add_argument(
-        "--val_path", default='dataset/kodak', type=str,
+        "--val_path", default='../../../dataset/kodak', type=str,
         help='val dataset path')
     parser.add_argument(
         "--checkpoint_dir", default="checkpoint",
         help="Directory where to save/load model checkpoints.")
     parser.add_argument(
-        "--batchsize", type=int, default=16,
+        "--batchsize", type=int, default=12,
         help="Batch size for training.")
     parser.add_argument(
-        '--gpu', default='0,1', type=str, help='gpu id')
+        '--gpu', default='0,1,2', type=str, help='gpu id')
     parser.add_argument(
-        "--qp", type=int, default=1,
+        "--qp", type=int, default=2,
         help="quantization parameter")
     parser.add_argument(
-        "--num_workers", type=int, default=12,
+        "--num_workers", type=int, default=0,
         help="num workers for data loading.")
     parser.add_argument(
         "--learning_rate", type=int, default=0.0001,
         help="learning rate")
     parser.add_argument(
-        "--model_type", default=0, type=int,
+        "--model_type", default=1, type=int,
         help="Model type, choose from 0:PSNR 1:MS-SSIM"
     )
     parser.add_argument(
@@ -376,8 +390,11 @@ if __name__ == "__main__":
         help="Size of Swin Transformer window for training."
     )
     parser.add_argument(
-        "--date", default="0925",
+        "--date", default="1007",
         help="date")
+    parser.add_argument(
+        "--load_weight", default=0, type=int,
+        help="")
 
     args = parser.parse_args()
     make_dir(args)
