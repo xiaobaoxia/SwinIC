@@ -331,24 +331,23 @@ class entropy_parameter(nn.Module):
             nn.LeakyReLU(),
             nn.Conv2d(640 * 2, num_filters * 30, 1, 1),
         )
-        self.masked = MaskedConv2d("A", in_channels=num_filters, out_channels=num_filters*2, kernel_size=5, stride=1, padding=2)
+        self.masked = MaskedConv2d("A", in_channels=num_filters
+                                   , out_channels=num_filters*2,
+                                   kernel_size=5, stride=1,
+                                   padding=2)
 
     def forward(self, y_hat,phi):
-        #
         context_info = self.masked(y_hat)
         x = torch.cat([phi, context_info], dim=1)
         x = self.transform(x)
-        prob0, mean0, scale0, prob1, mean1, scale1, prob2, mean2, scale2, prob3, mean3, scale3, prob4, mean4, scale4, prob5, mean5, scale5, \
-        prob6, mean6, scale6, prob7, mean7, scale7, prob8, mean8, scale8, prob_m0, prob_m1, prob_m2 = \
+        prob0, mean0, scale0, prob1, mean1, scale1,\
+        prob2, mean2, scale2, prob3, mean3, scale3,\
+        prob4, mean4, scale4, prob5, mean5, scale5,\
+        prob6, mean6, scale6, prob7, mean7, scale7,\
+        prob8, mean8, scale8, prob_m0, prob_m1, prob_m2 = \
             torch.split(x, split_size_or_sections=self.num_filters, dim=1)
         scale0 = torch.abs(scale0)
-        scale1 = torch.abs(scale1)
-        scale2 = torch.abs(scale2)
-        scale3 = torch.abs(scale3)
-        scale4 = torch.abs(scale4)
-        scale5 = torch.abs(scale5)
-        scale6 = torch.abs(scale6)
-        scale7 = torch.abs(scale7)
+        ...
         scale8 = torch.abs(scale8)
         softmax = torch.nn.Softmax(dim=-1)
         probs = torch.stack([prob0, prob1, prob2], dim=-1)
@@ -386,19 +385,49 @@ class MaskedConv2d(nn.Conv2d):
         return super(MaskedConv2d, self).forward(x)
 
 
-class RateDistortionLoss(nn.Module):
-    def __init__(self,type="sigmoid", constant_lambda=True):
-        super(RateDistortionLoss, self).__init__()
-        if type == "normal":
-            self.hyper_cumulative = self.simple_cumulative
-        elif type == "sigmoid":
-            self.hyper_cumulative = self.sigmoid_cumulative
 
-        if constant_lambda:
-            self.assign_lambda = self.constant_lambda
+class Bitparm(nn.Module):
+    '''
+    save params
+    '''
+    def __init__(self, channel, final=False):
+        super(Bitparm, self).__init__()
+        self.final = final
+        self.h = nn.Parameter(torch.nn.init.normal_(torch.empty(channel).view(1, -1, 1, 1), 0, 0.01))
+        self.b = nn.Parameter(torch.nn.init.normal_(torch.empty(channel).view(1, -1, 1, 1), 0, 0.01))
+        if not final:
+            self.a = nn.Parameter(torch.nn.init.normal_(torch.empty(channel).view(1, -1, 1, 1), 0, 0.01))
         else:
-            self.assign_lambda = self.lambda_update
-            self.epsilon = 1e-2
+            self.a = None
+
+    def forward(self, x):
+        if self.final:
+            return torch.sigmoid(x * F.softplus(self.h) + self.b)
+        else:
+            x = x * F.softplus(self.h) + self.b
+            return x + torch.tanh(x) * torch.tanh(self.a)
+
+class BitEstimator(nn.Module):
+    '''
+    Estimate bit
+    '''
+
+    def __init__(self, num_filters):
+        super(BitEstimator, self).__init__()
+        self.f1 = Bitparm(num_filters)
+        self.f2 = Bitparm(num_filters)
+        self.f3 = Bitparm(num_filters)
+        self.f4 = Bitparm(num_filters, True)
+
+    def forward(self, x):
+        x = self.f1(x)
+        x = self.f2(x)
+        x = self.f3(x)
+        return self.f4(x)
+
+class RateDistortionLoss(nn.Module):
+    def __init__(self):
+        super(RateDistortionLoss, self).__init__()
 
     def cumulative_normal(self, x,mu,sigma):
         """
@@ -408,46 +437,29 @@ class RateDistortionLoss(nn.Module):
         const = (2 ** 0.5)
         return half * (1 + torch.erf((x - mu) / (const * sigma)))
 
+    def log_cdf_laplace(self,x):
+
+        lower_solution = torch.log(torch.Tensor([.5]).cuda()) + x
+        safe_exp_neg_x = torch.exp(-torch.abs(x))
+        upper_solution = torch.log1p(-0.5 * safe_exp_neg_x)
+
+        return torch.where(x < 0., lower_solution, upper_solution)
+
     def cumulative_laplace(self, x,mu,sigma):
         """
         Calculates CDF of Laplace distribution with parameters mu and sigma at point x
         """
+        x = self.log_cdf_laplace(x)
         return 0.5 - 0.5 * (x - mu).sign() * torch.expm1(-(x - mu).abs() / (sigma))
 
     def cumulative_logistic(self, x,mu,sigma):
         """
         Calculates CDF of Logistic distribution with parameters mu and sigma at point x
         """
-        return torch.sigmoid((x - mu) / (sigma))
-
-    def simple_cumulative(self, x):
-        """
-        Calculates CDF of Normal distribution with mu = 0 and sigma = 1
-        """
-        half = 0.5
-        const = -(2 ** -0.5)
-        return half * torch.erf(const * x)
-
-    def sigmoid_cumulative(self, x):
-        """
-        Calculates sigmoid of the tensor to use as a replacement of CDF
-        """
-        return torch.sigmoid(x)
-
-    def lambda_update(self, lam, distortion):
-        """
-        Updates Lagrangian multiplier lambda at each step
-        """
-        return self.epsilon * distortion + lam
-
-    def constant_lambda(self, lam, distortion):
-        """
-        Assigns Lambda the same in the case lambda is constant
-        """
-        return 0.025
+        return torch.sigmoid((x - mu) / sigma)
 
     def latent_rate(self,y_hat,mu, sigma, probs, probs_lap, probs_log, probs_mix,mode='train'):
-        sigma += 1e-10
+        sigma = sigma.clamp(1e-10, 1e10)
         half = 0.5
         likelihoods_0 = self.cumulative_normal(y_hat + half, mu[...,0], sigma[...,0]) - self.cumulative_normal(y_hat - half,
                                                                                                           mu[...,0],
@@ -508,7 +520,7 @@ class RateDistortionLoss(nn.Module):
         likelihoods = torch.clamp(likelihoods, min=likelihood_lower_bound, max=likelihood_upper_bound)
         return -torch.sum(torch.log2(likelihoods), dim=(1, 2, 3))
 
-    def hyperlatent_rate(self, z):
+    def hyperlatent_rate(self, probs_z):
         """
         Calculate hyperlatent rate
 
@@ -520,22 +532,19 @@ class RateDistortionLoss(nn.Module):
         “Variational image compression with a scale hyperprior,” 6th Int. Conf. on Learning Representations, 2018. [Online].
         Available: https://openreview.net/forum?id=rkcQFMZRb.
         """
-        upper = self.hyper_cumulative(z + .5)
-        lower = self.hyper_cumulative(z - .5)
-        likelihoods = torch.abs(upper - lower)
-
+        likelihoods = torch.abs(probs_z)
         likelihood_lower_bound = 1e-8
         likelihood_upper_bound = 1.0
         likelihoods = torch.clamp(likelihoods, min=likelihood_lower_bound, max=likelihood_upper_bound)
-
         return -torch.sum(torch.log2(likelihoods), dim=(1, 2, 3))
 
-    def forward(self, x, x_hat, y_hat, z_hat, means, variances, probs, probs_lap, probs_log, probs_mix, lam,num_pixels,model_type):
+    def forward(self, x, x_hat, y_hat, probs_z, means, variances, probs, probs_lap, probs_log, probs_mix, lam,num_pixels,model_type):
+
         mse = torch.mean((x - x_hat) ** 2, [0, 1, 2, 3])
         ms_ssim = 1-compute_ms_ssim(x, x_hat, data_range=255, size_average=True)
         latent_rate = self.latent_rate(y_hat,means, variances, probs, probs_lap, probs_log, probs_mix)
         latent_rate = torch.mean(latent_rate)/num_pixels
-        hyperlatent_rate = self.hyperlatent_rate(z_hat)
+        hyperlatent_rate = self.hyperlatent_rate(probs_z)
         hyperlatent_rate = torch.mean(hyperlatent_rate)/num_pixels
         if model_type==0:
             loss = lam * mse + latent_rate + hyperlatent_rate
@@ -571,6 +580,7 @@ class Net(nn.Module):
         self.ha_model = h_analysisTransformModel(in_dim=channel,num_filters=channel)
         self.hs_model = h_synthesisTransformModel(num_filters=channel)
         self.entropy_parameter = entropy_parameter(num_filters=channel)
+        self.bitEstimator_z = BitEstimator(num_filters=channel)
 
 
     def _forward_impl(self, inputs, mode='train'):
@@ -594,12 +604,11 @@ class Net(nn.Module):
         phi = self.hs_model(z_hat)
         means,variances,probs,probs_lap,probs_log,probs_mix = self.entropy_parameter(y_hat,phi)
         x_hat = self.s_model(y_hat)
-
-        return x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix
+        probs_z = self.bitEstimator_z(z_hat + 0.5) - self.bitEstimator_z(z_hat - 0.5)
+        return x_hat,y_hat, z_hat,probs_z,means,variances,probs,probs_lap,probs_log,probs_mix
 
     def forward(self, images, mode='train'):
         return self._forward_impl(images,mode)
-
 
 
 

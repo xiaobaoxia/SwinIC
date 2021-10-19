@@ -115,12 +115,12 @@ def test(net,epoch,val_data,val_loader,val_transform,criterion):
             w_pad = (w_old // (16*args.windowsize)) * (16*args.windowsize) if w_old % (16*args.windowsize) == 0 else (w_old // (16*args.windowsize) + 1) * (16*args.windowsize)
             images_pad = torch.cat([images, torch.flip(images, [2])], 2)[:, :, :h_pad, :]
             images_pad = torch.cat([images_pad, torch.flip(images_pad, [3])], 3)[:, :, :, :w_pad]
-            x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix = net(images_pad, mode='eval')
+            x_hat,y_hat, z_hat,probs_z,means,variances,probs,probs_lap,probs_log,probs_mix = net(images_pad, mode='eval')
             x_hat = x_hat[..., :h_old, :w_old]
 
             images = torch.round((images + 1) * 127.5).float()
             x_hat = torch.round(torch.clamp((x_hat + 1) * 127.5, 0, 255)).float()
-            v_loss, v_mse, v_ms_ssim, latent_rate, hyperlatent_rate = criterion(images, x_hat, y_hat, z_hat, means, variances,
+            v_loss, v_mse, v_ms_ssim, latent_rate, hyperlatent_rate = criterion(images, x_hat, y_hat, probs_z, means, variances,
                                                                           probs, probs_lap, probs_log, probs_mix, lmbda,
                                                                           num_pixels, args.model_type)
 
@@ -197,6 +197,8 @@ class SelfDataset(torchvision.datasets.VisionDataset):
 def main():
     num_pixels = (args.patchsize * args.patchsize)
     train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
         Preprocess(),
     ])
     train_data = SelfDataset(args.train_path,train_transform)
@@ -259,10 +261,10 @@ def main():
                 opt.zero_grad()
 
                 images = torch.stack([image.cuda() for image in images], dim=0)
-                x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix = net(images,'train')
+                x_hat,y_hat, z_hat,probs_z,means,variances,probs,probs_lap,probs_log,probs_mix = net(images,'train')
                 images = torch.round((images+1) * 127.5).float()
                 x_hat = bypass_round(torch.clamp((x_hat+1) * 127.5, 0, 255)).float()
-                loss,mse,ms_ssim,latent_rate,hyperlatent_rate = criterion(images,x_hat,y_hat, z_hat,means,variances,probs,probs_lap,probs_log,probs_mix,lmbda,num_pixels,args.model_type)
+                loss,mse,ms_ssim,latent_rate,hyperlatent_rate = criterion(images,x_hat,y_hat, probs_z,means,variances,probs,probs_lap,probs_log,probs_mix,lmbda,num_pixels,args.model_type)
                 loss.backward()
                 if loss != loss:
                     # print grad check
@@ -351,10 +353,10 @@ if __name__ == "__main__":
         "output", nargs="?",
         help="Output filename.")
     parser.add_argument(
-        "--train_path", default='dataset/DIV2K/DIV2K_train_HR_sub', type=str,
+        "--train_path", default='../../../dataset/DIV2K/DIV2K_train_HR_sub', type=str,
         help='train dataset path')
     parser.add_argument(
-        "--val_path", default='dataset/kodak', type=str,
+        "--val_path", default='../../../dataset/kodak', type=str,
         help='val dataset path')
     parser.add_argument(
         "--checkpoint_dir", default="checkpoint",
@@ -365,7 +367,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--gpu', default='0,1,2,3', type=str, help='gpu id')
     parser.add_argument(
-        "--qp", type=int, default=0,
+        "--qp", type=int, default=1,
         help="quantization parameter")
     parser.add_argument(
         "--num_workers", type=int, default=12,
@@ -374,7 +376,7 @@ if __name__ == "__main__":
         "--learning_rate", type=int, default=0.0001,
         help="learning rate")
     parser.add_argument(
-        "--model_type", default=1, type=int,
+        "--model_type", default=0, type=int,
         help="Model type, choose from 0:PSNR 1:MS-SSIM"
     )
     parser.add_argument(
@@ -382,7 +384,7 @@ if __name__ == "__main__":
         help="Size of image patches for training."
     )
     parser.add_argument(
-        "--epoch", default=100, type=int,
+        "--epoch", default=80, type=int,
         help=""
     )
     parser.add_argument(
@@ -390,7 +392,7 @@ if __name__ == "__main__":
         help="Size of Swin Transformer window for training."
     )
     parser.add_argument(
-        "--date", default="1007",
+        "--date", default="1019",
         help="date")
     parser.add_argument(
         "--load_weight", default=0, type=int,
