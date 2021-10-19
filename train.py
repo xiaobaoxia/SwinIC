@@ -232,7 +232,7 @@ def main():
     # if args.load_weight:
     #     net.load_state_dict(torch.load("checkpoint/SwinIC_0qp1_384_8_0925.ckpt"))
     #     opt.load_state_dict(torch.load("checkpoint/SwinIC_opt_0qp1_384_8_0925.ckpt"))
-    sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=2,
+    sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=1,
                                                threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # for checkpoint resume
     st_epoch = 0
@@ -353,10 +353,10 @@ if __name__ == "__main__":
         "output", nargs="?",
         help="Output filename.")
     parser.add_argument(
-        "--train_path", default='../../../dataset/DIV2K/DIV2K_train_HR_sub', type=str,
+        "--train_path", default='dataset/DIV2K/DIV2K_train_HR_sub', type=str,
         help='train dataset path')
     parser.add_argument(
-        "--val_path", default='../../../dataset/kodak', type=str,
+        "--val_path", default='dataset/kodak', type=str,
         help='val dataset path')
     parser.add_argument(
         "--checkpoint_dir", default="checkpoint",
