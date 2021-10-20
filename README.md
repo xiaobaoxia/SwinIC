@@ -33,13 +33,10 @@ batchsize为4时约需要11G显存
 高qp网络channel数为 低qp的两倍，会增加显存使用，需要根据情况调低batchsize
 ```shell
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 1
-python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 2
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 3
-python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 4
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 5
-python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 6
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 0 --qp 7
-python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 1
+
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 2
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 3
 python train.py --batchsize 32 --gpu "0,1,2,3" --model_type 1 --qp 4
