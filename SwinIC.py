@@ -329,25 +329,27 @@ class entropy_parameter(nn.Module):
             nn.LeakyReLU(),
             nn.Conv2d(640, 640 * 2, 1, 1),
             nn.LeakyReLU(),
+            # 从这里向上梯度变为NAN
             nn.Conv2d(640 * 2, num_filters * 30, 1, 1),
         )
-        self.masked = MaskedConv2d("A", in_channels=num_filters
-                                   , out_channels=num_filters*2,
-                                   kernel_size=5, stride=1,
-                                   padding=2)
+        self.masked = MaskedConv2d("A", in_channels=num_filters, out_channels=num_filters*2, kernel_size=5, stride=1, padding=2)
 
     def forward(self, y_hat,phi):
+        #
         context_info = self.masked(y_hat)
         x = torch.cat([phi, context_info], dim=1)
         x = self.transform(x)
-        prob0, mean0, scale0, prob1, mean1, scale1,\
-        prob2, mean2, scale2, prob3, mean3, scale3,\
-        prob4, mean4, scale4, prob5, mean5, scale5,\
-        prob6, mean6, scale6, prob7, mean7, scale7,\
-        prob8, mean8, scale8, prob_m0, prob_m1, prob_m2 = \
+        prob0, mean0, scale0, prob1, mean1, scale1, prob2, mean2, scale2, prob3, mean3, scale3, prob4, mean4, scale4, prob5, mean5, scale5, \
+        prob6, mean6, scale6, prob7, mean7, scale7, prob8, mean8, scale8, prob_m0, prob_m1, prob_m2 = \
             torch.split(x, split_size_or_sections=self.num_filters, dim=1)
         scale0 = torch.abs(scale0)
-        ...
+        scale1 = torch.abs(scale1)
+        scale2 = torch.abs(scale2)
+        scale3 = torch.abs(scale3)
+        scale4 = torch.abs(scale4)
+        scale5 = torch.abs(scale5)
+        scale6 = torch.abs(scale6)
+        scale7 = torch.abs(scale7)
         scale8 = torch.abs(scale8)
         softmax = torch.nn.Softmax(dim=-1)
         probs = torch.stack([prob0, prob1, prob2], dim=-1)
