@@ -118,7 +118,6 @@ class analysisTransformModel(nn.Module):
                              mlp_ratio=2, qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
                              drop_path=0, norm_layer=nn.LayerNorm, downsample=None,
                              use_checkpoint=False, patch_size=1, resi_connection='3conv')
-        # self.Attention0 = NonLocalAttentionBlock(num_filters)
         self.CRM1 = ConcatenatedResidualModule(num_filters)
         self.shortcut2 = nn.Conv2d(num_filters, num_filters, 1, 2)
         self.conv_down_sample_2 = nn.Sequential(
@@ -137,7 +136,6 @@ class analysisTransformModel(nn.Module):
                              mlp_ratio=2, qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
                              drop_path=0, norm_layer=nn.LayerNorm, downsample=None,
                              use_checkpoint=False, patch_size=1, resi_connection='3conv')
-        # self.Attention0 = NonLocalAttentionBlock(num_filters)
 
     def forward(self, x):
         shortcut0 = self.shortcut0(x)
@@ -387,7 +385,6 @@ class MaskedConv2d(nn.Conv2d):
         return super(MaskedConv2d, self).forward(x)
 
 
-
 class Bitparm(nn.Module):
     '''
     save params
@@ -611,9 +608,3 @@ class Net(nn.Module):
 
     def forward(self, images, mode='train'):
         return self._forward_impl(images,mode)
-
-
-
-
-
-
